@@ -1,3 +1,8 @@
+use num_traits::{One, Zero};
+use std::collections::HashMap;
+use std::fmt::Debug;
+use std::ops::{Mul, Rem, Sub};
+
 /// A trait for types that can be used with the baby-step giant-step algorithm
 pub trait BsgsOps: Sized + Clone + Eq + std::hash::Hash {
     type Scalar;
@@ -48,5 +53,58 @@ fn modular_exponentiation(base: u128, exponent: u128, modulus: u128) -> u128 {
     }
 
     result
+}
+
+/// Computes the discrete logarithm using the baby-step giant-step algorithm
+///
+/// Solves for x in the equation: g^x ≡ h (mod p)
+/// Or more generally, solves for x in: g.scalar_mul(x) == h
+///
+/// Returns Some(x) if a solution is found, None otherwise
+pub fn baby_step_giant_step<T: BsgsOps>(
+    base: &T,
+    target: &T,
+    modulus: &T::Scalar,
+    order: &T::Scalar,
+) -> Option<T::Scalar>
+where
+    T::Scalar: Clone
+        + Copy
+        + Sub<Output = T::Scalar>
+        + Rem<Output = T::Scalar>
+        + Mul<Output = T::Scalar>
+        + PartialOrd
+        + From<u32>
+        + Debug
+        + Eq
+        + std::hash::Hash,
+{
+    let m = num_integer::sqrt(*order);
+    let n = ((*order + m - 1) / m); // Ceiling division
+
+    // Precompute baby steps
+    let mut baby_steps = HashMap::new();
+    let mut current = T::identity();
+
+    for j in 0..m {
+        baby_steps.insert(current.clone(), j);
+        current = current.operate(base);
+    }
+
+    // Compute g^(-m)
+    let neg_m = *modulus - (m % *modulus);
+    let giant_step_base = base.scalar_mul(&neg_m);
+
+    // Compute giant steps
+    let mut current = target.clone();
+
+    for i in 0..n {
+        if let Some(&j) = baby_steps.get(&current) {
+            return Some((i * m + j) % *order);
+        }
+        current = current.operate(&giant_step_base);
+    }
+
+    None
 }
 

@@ -28,3 +28,25 @@ impl BsgsOps for u128 {
         1
     }
 }
+
+/// Modular exponentiation using square-and-multiply algorithm
+fn modular_exponentiation(base: u128, exponent: u128, modulus: u128) -> u128 {
+    if modulus == 1 {
+        return 0;
+    }
+
+    let mut result = 1;
+    let mut base = base % modulus;
+    let mut exp = exponent;
+
+    while exp > 0 {
+        if exp % 2 == 1 {
+            result = (result * base) % modulus;
+        }
+        exp >>= 1;
+        base = (base * base) % modulus;
+    }
+
+    result
+}
+

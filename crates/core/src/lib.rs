@@ -1,4 +1,3 @@
-use num_traits::{One, Zero};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::ops::{Mul, Rem, Sub};
@@ -6,6 +5,11 @@ use std::ops::{Mul, Rem, Sub};
 /// A trait for types that can be used with the baby-step giant-step algorithm
 pub trait BsgsOps: Sized + Clone + Eq + std::hash::Hash {
     type Scalar;
+
+    const ORDER: Self::Scalar;
+    const ORDER_ROOT: Self::Scalar;
+
+    fn steps_range() -> std::ops::Range<Self::Scalar>;
 
     /// Computes the operation (typically addition for elliptic curves or multiplication for integers)
     fn operate(&self, rhs: &Self) -> Self;
@@ -20,6 +24,13 @@ pub trait BsgsOps: Sized + Clone + Eq + std::hash::Hash {
 /// Implementation for u128 modular exponentiation
 impl BsgsOps for u128 {
     type Scalar = u128;
+
+    const ORDER: u128 = 1_099_511_627_776;
+    const ORDER_ROOT: u128 = 1_048_576;
+
+    fn steps_range() -> std::ops::Range<u128> {
+        0..Self::ORDER_ROOT
+    }
 
     fn operate(&self, rhs: &Self) -> Self {
         (self * rhs) % Self::Scalar::MAX
@@ -65,7 +76,6 @@ pub fn baby_step_giant_step<T: BsgsOps>(
     base: &T,
     target: &T,
     modulus: &T::Scalar,
-    order: &T::Scalar,
 ) -> Option<T::Scalar>
 where
     T::Scalar: Clone
@@ -78,15 +88,18 @@ where
         + Debug
         + Eq
         + std::hash::Hash,
+    std::ops::Range<<T as BsgsOps>::Scalar>: IntoIterator,
 {
-    let m = num_integer::sqrt(*order);
-    let n = ((*order + m - 1) / m); // Ceiling division
+    // let m = num_integer::sqrt(*order);
+    // let n = ((*order + m - 1) / m); // Ceiling division
+    let m = T::ORDER_ROOT;
+    let n = m;
 
     // Precompute baby steps
     let mut baby_steps = HashMap::new();
     let mut current = T::identity();
 
-    for j in 0..m {
+    for j in T::steps_range() {
         baby_steps.insert(current.clone(), j);
         current = current.operate(base);
     }
@@ -98,7 +111,7 @@ where
     // Compute giant steps
     let mut current = target.clone();
 
-    for i in 0..n {
+    for i in T::steps_range() {
         if let Some(&j) = baby_steps.get(&current) {
             return Some((i * m + j) % *order);
         }

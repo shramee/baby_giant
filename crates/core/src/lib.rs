@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::ops::{Mul, Rem, Sub};
+use std::ops::{Mul, Range, Rem, Sub};
 
 /// A trait for types that can be used with the baby-step giant-step algorithm
 pub trait BsgsOps: Sized + Clone + Eq + std::hash::Hash {
@@ -9,13 +9,16 @@ pub trait BsgsOps: Sized + Clone + Eq + std::hash::Hash {
     const ORDER: Self::Scalar;
     const ORDER_ROOT: Self::Scalar;
 
-    fn steps_range() -> std::ops::Range<Self::Scalar>;
+    fn steps_range() -> Range<Self::Scalar>;
 
     /// Computes the operation (typically addition for elliptic curves or multiplication for integers)
     fn operate(&self, rhs: &Self) -> Self;
 
     /// Computes the scalar multiplication/exponentiation
     fn scalar_mul(&self, scalar: &Self::Scalar) -> Self;
+
+    /// Computes the scalar result from matched baby and giant step
+    fn process_result(&self, baby: &Self::Scalar, giant: &Self::Scalar) -> Self::Scalar;
 
     /// Returns the identity element
     fn identity() -> Self;
@@ -25,10 +28,10 @@ pub trait BsgsOps: Sized + Clone + Eq + std::hash::Hash {
 impl BsgsOps for u128 {
     type Scalar = u128;
 
-    const ORDER: u128 = 1_099_511_627_776;
-    const ORDER_ROOT: u128 = 1_048_576;
+    const ORDER: u128 = 1_099_511_627_776; // 2^40
+    const ORDER_ROOT: u128 = 1_048_576; // 2^20
 
-    fn steps_range() -> std::ops::Range<u128> {
+    fn steps_range() -> Range<u128> {
         0..Self::ORDER_ROOT
     }
 
@@ -38,6 +41,10 @@ impl BsgsOps for u128 {
 
     fn scalar_mul(&self, scalar: &Self::Scalar) -> Self {
         modular_exponentiation(*self, *scalar, Self::Scalar::MAX)
+    }
+
+    fn process_result(&self, baby: &Self::Scalar, giant: &Self::Scalar) -> Self::Scalar {
+        (giant * Self::ORDER_ROOT + baby) % Self::ORDER
     }
 
     fn identity() -> Self {
@@ -111,9 +118,9 @@ where
     // Compute giant steps
     let mut current = target.clone();
 
-    for i in T::steps_range() {
-        if let Some(&j) = baby_steps.get(&current) {
-            return Some((i * m + j) % *order);
+    for giant_step in T::steps_range() {
+        if let Some(&baby_step) = baby_steps.get(&current) {
+            return Some(current.process_result(&baby_step, &giant_step));
         }
         current = current.operate(&giant_step_base);
     }

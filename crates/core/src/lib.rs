@@ -109,8 +109,8 @@ impl BsgsOps for FieldU128 {
         (lhs * rhs) % self.modulus
     }
 
-        modular_exponentiation(*base, Self::STEPS_COUNT, self.modulus)
     fn gaint_step_jump(&self, base: &u128) -> u128 {
+        mod_exp(*base, self.modulus - 1 - self.steps_count, self.modulus)
     }
 
     fn process_result(&self, baby: &u128, giant: &u128) -> u128 {

@@ -1,24 +1,49 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::hash::Hash;
 use std::ops::{Mul, Range, Rem, Sub};
 
 /// A trait for types that can be used with the baby-step giant-step algorithm
-pub trait BsgsOps: Sized + Clone + Eq + std::hash::Hash {
+pub trait BsgsOps {
+    type Scalar;
+    type El;
     const STEPS_COUNT: u128;
 
     fn steps_range() -> Range<u128>;
 
     /// Computes the operation (typically addition for elliptic curves or multiplication for integers)
-    fn baby_steps(&self) -> HashMap<Self, u128>;
+    fn baby_steps(&self, base: &Self::El) -> HashMap<Self::El, u128>;
+
+    /// Computes the operation (typically addition for elliptic curves or multiplication for integers)
+    fn el_operation(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El;
 
     /// Computes the scalar multiplication/exponentiation
-    fn scalar_mul(&self, scalar: u128) -> Self;
+    fn giant_step_base(&self, base: &Self::El) -> Self::El;
 
     /// Computes the scalar result from matched baby and giant step
-    fn process_result(&self, baby: u128, giant: u128) -> u128;
+    fn process_result(&self, baby: u128, giant: u128) -> Self::Scalar;
 
-    /// Returns the identity element
-    fn identity() -> Self;
+    fn run(&self, base: Self::El, target: Self::El) -> Option<Self::Scalar>
+    where
+        Self::El: Eq + Hash,
+    {
+        // Compute baby steps
+        let baby_steps = self.baby_steps(&base);
+
+        // Compute g^(-m)
+        let giant_step_base = self.giant_step_base(&base);
+
+        // Compute giant steps
+        let mut current = target;
+
+        for giant_step in Self::steps_range() {
+            if let Some(&baby_step) = baby_steps.get(&current) {
+                return Some(self.process_result(baby_step, giant_step));
+            }
+            current = self.el_operation(&current, &giant_step_base);
+        }
+        None
+    }
 }
 
 /// Implementation for u128 modular exponentiation

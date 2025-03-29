@@ -1,7 +1,6 @@
 use std::collections::HashMap;
-use std::fmt::Debug;
 use std::hash::Hash;
-use std::ops::{AddAssign, Range};
+use std::ops::AddAssign;
 
 /// A trait for types that can be used with the baby-step giant-step algorithm
 /// This algorithm solves the discrete logarithm problem: finding x where target = base^x
@@ -65,36 +64,40 @@ pub trait BsgsOps {
     }
 }
 
+#[derive(Hash, Clone, PartialEq, Eq)]
+struct FieldU128 {
+    modulus: u128,
+}
+
 /// Implementation for u128 modular exponentiation
-impl BsgsOps for u128 {
+impl BsgsOps for FieldU128 {
+    type El = u128;
+    type Scalar = u128;
+
     const STEPS_COUNT: u128 = 1_048_576; // 2^20
 
-    fn steps_range() -> Range<u128> {
-        0..Self::STEPS_COUNT
-    }
-
-    fn baby_steps(&self) -> HashMap<Self, u128> {
+    fn baby_steps(&self, base: &u128) -> HashMap<u128, u128> {
         let mut baby_steps = HashMap::new();
-        let mut current = self.clone();
+        let mut current = *base;
 
-        for j in 0..1_048_576 {
+        for j in 0..Self::STEPS_COUNT {
             baby_steps.insert(current.clone(), j);
-            current *= self;
+            current *= base;
         }
 
         baby_steps
     }
 
-    fn scalar_mul(&self, scalar: u128) -> Self {
-        modular_exponentiation(*self, scalar, u128::MAX)
+    fn el_operation(&self, lhs: &u128, rhs: &u128) -> u128 {
+        lhs * rhs
     }
 
-    fn process_result(&self, baby: u128, giant: u128) -> u128 {
+    fn giant_step_base(&self, base: &u128) -> u128 {
+        modular_exponentiation(*base, Self::STEPS_COUNT, self.modulus)
+    }
+
+    fn process_result(&self, baby: &u128, giant: &u128) -> u128 {
         giant * Self::STEPS_COUNT + baby
-    }
-
-    fn identity() -> Self {
-        1
     }
 }
 

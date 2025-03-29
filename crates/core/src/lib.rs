@@ -12,7 +12,7 @@ pub trait BsgsOps: Sized + Clone + Eq + std::hash::Hash {
     fn steps_range() -> Range<Self::Scalar>;
 
     /// Computes the operation (typically addition for elliptic curves or multiplication for integers)
-    fn operate(&self, rhs: &Self) -> Self;
+    fn baby_steps(&self) -> HashMap<Self, Self::Scalar>;
 
     /// Computes the scalar multiplication/exponentiation
     fn scalar_mul(&self, scalar: &Self::Scalar) -> Self;
@@ -35,8 +35,16 @@ impl BsgsOps for u128 {
         0..Self::ORDER_ROOT
     }
 
-    fn operate(&self, rhs: &Self) -> Self {
-        (self * rhs) % Self::Scalar::MAX
+    fn baby_steps(&self) -> HashMap<Self, Self::Scalar> {
+        let mut baby_steps = HashMap::new();
+        let mut current = self.clone();
+
+        for j in 0..1_048_576 {
+            baby_steps.insert(current.clone(), j);
+            current *= self;
+        }
+
+        baby_steps
     }
 
     fn scalar_mul(&self, scalar: &Self::Scalar) -> Self {
@@ -102,14 +110,7 @@ where
     let m = T::ORDER_ROOT;
     let n = m;
 
-    // Precompute baby steps
-    let mut baby_steps = HashMap::new();
-    let mut current = T::identity();
-
-    for j in T::steps_range() {
-        baby_steps.insert(current.clone(), j);
-        current = current.operate(base);
-    }
+    let baby_steps = base.baby_steps();
 
     // Compute g^(-m)
     let neg_m = *modulus - (m % *modulus);

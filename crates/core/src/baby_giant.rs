@@ -5,7 +5,7 @@ use std::ops::AddAssign;
 /// A trait for types that can be used with the baby-step giant-step algorithm
 /// This algorithm solves the discrete logarithm problem: finding x where target = base^x
 /// (or in additive groups like elliptic curves: target = x·base)
-pub trait BsgsOps {
+pub trait BabyGiantOps {
     /// The scalar type (typically represents field elements or integers)
     type Scalar;
 
@@ -42,7 +42,6 @@ pub trait BsgsOps {
 
         // Start with the target element
         let mut current = target.clone();
-
         // Iterate through all giant steps
         let mut giant_step: Self::Scalar = 0_u32.into();
         let scalar_one: Self::Scalar = 1_u32.into();
@@ -53,8 +52,7 @@ pub trait BsgsOps {
                 // Found a match! Compute the final result
                 return Some(self.process_result(baby_step, &giant_step));
             }
-            // Apply the giant step: current = current + gaint_step_jump
-            // (conceptually: target + j·(-m·base))
+            // Apply the giant step, target + giant_step·(-m·base))
             current = self.el_operation(&current, &gaint_step_jump);
             giant_step += scalar_one.clone();
         }

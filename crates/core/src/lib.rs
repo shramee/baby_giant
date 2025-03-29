@@ -1,2 +1,6 @@
-pub mod traits;
-pub mod u128_finite_field;
+pub mod baby_giant;
+pub use baby_giant::BabyGiantOps;
+
+pub mod impls {
+    pub mod u128_ff;
+}

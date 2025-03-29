@@ -1,4 +1,4 @@
-use ark_grumpkin::{Affine, Fr, Projective};
+use ark_grumpkin::{Fr, Projective};
 
 use std::collections::HashMap;
 use std::hash::Hash;
@@ -10,13 +10,19 @@ pub struct GrumpkinBabyGiant {
     steps_count: u64,
 }
 
+impl GrumpkinBabyGiant {
+    pub fn new(steps_count: u64) -> Self {
+        Self { steps_count }
+    }
+}
+
 /// Implementation for u128 modular exponentiation
 impl BabyGiantOps for GrumpkinBabyGiant {
     type El = Projective;
     type Scalar = u64;
 
     fn steps_count(&self) -> Self::Scalar {
-        1_048_576 // 2 ** 20
+        self.steps_count
     }
 
     fn baby_steps(&self, base: &Self::El) -> HashMap<Self::El, u64> {

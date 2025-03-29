@@ -4,21 +4,18 @@ use std::ops::{Mul, Range, Rem, Sub};
 
 /// A trait for types that can be used with the baby-step giant-step algorithm
 pub trait BsgsOps: Sized + Clone + Eq + std::hash::Hash {
-    type Scalar;
+    const STEPS_COUNT: u128;
 
-    const ORDER: Self::Scalar;
-    const ORDER_ROOT: Self::Scalar;
-
-    fn steps_range() -> Range<Self::Scalar>;
+    fn steps_range() -> Range<u128>;
 
     /// Computes the operation (typically addition for elliptic curves or multiplication for integers)
-    fn baby_steps(&self) -> HashMap<Self, Self::Scalar>;
+    fn baby_steps(&self) -> HashMap<Self, u128>;
 
     /// Computes the scalar multiplication/exponentiation
-    fn scalar_mul(&self, scalar: &Self::Scalar) -> Self;
+    fn scalar_mul(&self, scalar: u128) -> Self;
 
     /// Computes the scalar result from matched baby and giant step
-    fn process_result(&self, baby: &Self::Scalar, giant: &Self::Scalar) -> Self::Scalar;
+    fn process_result(&self, baby: u128, giant: u128) -> u128;
 
     /// Returns the identity element
     fn identity() -> Self;
@@ -26,16 +23,13 @@ pub trait BsgsOps: Sized + Clone + Eq + std::hash::Hash {
 
 /// Implementation for u128 modular exponentiation
 impl BsgsOps for u128 {
-    type Scalar = u128;
-
-    const ORDER: u128 = 1_099_511_627_776; // 2^40
-    const ORDER_ROOT: u128 = 1_048_576; // 2^20
+    const STEPS_COUNT: u128 = 1_048_576; // 2^20
 
     fn steps_range() -> Range<u128> {
-        0..Self::ORDER_ROOT
+        0..Self::STEPS_COUNT
     }
 
-    fn baby_steps(&self) -> HashMap<Self, Self::Scalar> {
+    fn baby_steps(&self) -> HashMap<Self, u128> {
         let mut baby_steps = HashMap::new();
         let mut current = self.clone();
 
@@ -47,12 +41,12 @@ impl BsgsOps for u128 {
         baby_steps
     }
 
-    fn scalar_mul(&self, scalar: &Self::Scalar) -> Self {
-        modular_exponentiation(*self, *scalar, Self::Scalar::MAX)
+    fn scalar_mul(&self, scalar: u128) -> Self {
+        modular_exponentiation(*self, scalar, u128::MAX)
     }
 
-    fn process_result(&self, baby: &Self::Scalar, giant: &Self::Scalar) -> Self::Scalar {
-        (giant * Self::ORDER_ROOT + baby) % Self::ORDER
+    fn process_result(&self, baby: u128, giant: u128) -> u128 {
+        giant * Self::STEPS_COUNT + baby
     }
 
     fn identity() -> Self {

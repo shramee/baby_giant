@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::hash::Hash;
 use std::ops::AddAssign;
 
@@ -12,7 +13,7 @@ pub trait BsgsOps {
     /// The group element type (e.g., points on an elliptic curve)
     type El;
 
-    const STEPS_COUNT: Self::Scalar;
+    fn steps_count(&self) -> Self::Scalar;
 
     /// Computes and stores all baby steps
     /// Returns a map from group elements to their corresponding scalar values
@@ -22,7 +23,7 @@ pub trait BsgsOps {
     fn el_operation(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El;
 
     /// Computes the giant step base: typically -(m·base) for a chosen m
-    fn giant_step_base(&self, base: &Self::El) -> Self::El;
+    fn gaint_step_jump(&self, base: &Self::El) -> Self::El;
 
     /// Converts raw baby and giant step values into the final scalar result
     fn process_result(&self, baby: &Self::Scalar, giant: &Self::Scalar) -> Self::Scalar;
@@ -31,31 +32,32 @@ pub trait BsgsOps {
     /// Solves for x in the equation target = x·base
     fn run(&self, base: Self::El, target: Self::El) -> Option<Self::Scalar>
     where
-        Self::El: Eq + Hash,
-        Self::Scalar: Clone + PartialOrd + From<u32> + AddAssign,
+        Self::El: Clone + Eq + Hash + Display,
+        Self::Scalar: Clone + PartialOrd + From<u32> + AddAssign + Display,
     {
         // Precompute all baby steps and store in a hash map for O(1) lookups
         let baby_steps = self.baby_steps(&base);
 
         // Compute the giant step base (typically -(m·base))
-        let giant_step_base = self.giant_step_base(&base);
+        let gaint_step_jump = self.gaint_step_jump(&base);
 
         // Start with the target element
-        let mut current = target;
+        let mut current = target.clone();
 
         // Iterate through all giant steps
         let mut giant_step: Self::Scalar = 0_u32.into();
         let scalar_one: Self::Scalar = 1_u32.into();
-        while giant_step < Self::STEPS_COUNT {
+        let steps_count = self.steps_count();
+        while giant_step < steps_count {
             // Check if current element matches any baby step
             if let Some(baby_step) = baby_steps.get(&current) {
                 // Found a match! Compute the final result
                 return Some(self.process_result(baby_step, &giant_step));
             }
 
-            // Apply the giant step: current = current + giant_step_base
+            // Apply the giant step: current = current + gaint_step_jump
             // (conceptually: target + j·(-m·base))
-            current = self.el_operation(&current, &giant_step_base);
+            current = self.el_operation(&current, &gaint_step_jump);
             giant_step += scalar_one.clone();
         }
 
@@ -65,8 +67,19 @@ pub trait BsgsOps {
 }
 
 #[derive(Hash, Clone, PartialEq, Eq)]
-struct FieldU128 {
+pub struct FieldU128 {
     modulus: u128,
+    steps_count: u128,
+}
+
+impl FieldU128 {
+    pub fn new(modulus: u128) -> Self {
+        let steps_count = modulus.isqrt() + 1;
+        Self {
+            modulus,
+            steps_count,
+        }
+    }
 }
 
 /// Implementation for u128 modular exponentiation
@@ -74,35 +87,40 @@ impl BsgsOps for FieldU128 {
     type El = u128;
     type Scalar = u128;
 
-    const STEPS_COUNT: u128 = 1_048_576; // 2^20
+    fn steps_count(&self) -> Self::Scalar {
+        self.steps_count
+    }
 
     fn baby_steps(&self, base: &u128) -> HashMap<u128, u128> {
         let mut baby_steps = HashMap::new();
         let mut current = *base;
 
-        for j in 0..Self::STEPS_COUNT {
-            baby_steps.insert(current.clone(), j);
-            current *= base;
+        let mut baby_step = 0;
+        while baby_step < self.steps_count {
+            baby_step += 1;
+            baby_steps.insert(current, baby_step);
+            current = current * base % self.modulus;
         }
 
         baby_steps
     }
 
     fn el_operation(&self, lhs: &u128, rhs: &u128) -> u128 {
-        lhs * rhs
+        (lhs * rhs) % self.modulus
     }
 
-    fn giant_step_base(&self, base: &u128) -> u128 {
         modular_exponentiation(*base, Self::STEPS_COUNT, self.modulus)
+    fn gaint_step_jump(&self, base: &u128) -> u128 {
     }
 
     fn process_result(&self, baby: &u128, giant: &u128) -> u128 {
-        giant * Self::STEPS_COUNT + baby
+        let step_count = self.steps_count;
+        giant * step_count + baby
     }
 }
 
 /// Modular exponentiation using square-and-multiply algorithm
-fn modular_exponentiation(base: u128, exponent: u128, modulus: u128) -> u128 {
+fn mod_exp(base: u128, exponent: u128, modulus: u128) -> u128 {
     if modulus == 1 {
         return 0;
     }
@@ -122,3 +140,4 @@ fn modular_exponentiation(base: u128, exponent: u128, modulus: u128) -> u128 {
     result
 }
 
+#[cfg(test)]

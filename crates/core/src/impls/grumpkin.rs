@@ -59,73 +59,25 @@ mod tests {
     use ark_grumpkin::{Affine, Fr, Projective, G_GENERATOR_X, G_GENERATOR_Y};
     use std::time::Instant;
 
-    #[test]
-    fn affine_product() {
-        let g = Affine::new_unchecked(G_GENERATOR_X, G_GENERATOR_Y);
-
-        let now = Instant::now();
-        let x: Fr = 292084935932564429263800859041549340427_u128
-            .try_into()
-            .unwrap();
-        let _p = g * x;
-
-        let x: Fr = 64429263800932549340427859041292084935_u128
-            .try_into()
-            .unwrap();
-        let _p = g * x;
-
-        let x: Fr = 329211671161606102760987063494629384547_u128
-            .try_into()
-            .unwrap();
-        let _p = g * x;
-
-        let x: Fr = 193256442926382920849393404200859041547_u128
-            .try_into()
-            .unwrap();
-        let _p = g * x;
-
-        let x: Fr = 098706349462938454732921167116160610276_u128
-            .try_into()
-            .unwrap();
-        let _p = g * x;
-
-        println!("Affine product took: {:.2?}", now.elapsed());
-        assert!(false);
-        // grumpkin
-    }
+    use crate::{impls::grumpkin::GrumpkinBabyGiant, BabyGiantOps};
 
     #[test]
-    fn projective_product() {
+    fn grumpkin_bsgs_32() {
         let g: Projective = Affine::new_unchecked(G_GENERATOR_X, G_GENERATOR_Y).into();
+        let grumpy_bsgs = GrumpkinBabyGiant::new(65536);
+
+        let x_num = 4294967295_u64;
+        let x: Fr = x_num.into();
+        let target = g * x;
 
         let now = Instant::now();
-        let x: Fr = 292084935932564429263800859041549340427_u128
-            .try_into()
-            .unwrap();
-        let _p = g * x;
 
-        let x: Fr = 64429263800932549340427859041292084935_u128
-            .try_into()
-            .unwrap();
-        let _p = g * x;
+        let res = grumpy_bsgs.run(g, target);
 
-        let x: Fr = 329211671161606102760987063494629384547_u128
-            .try_into()
-            .unwrap();
-        let _p = g * x;
+        println!("Result: {:?}", res);
+        println!("\n\nGrumpkin BSGS took: {:.2?}", now.elapsed());
 
-        let x: Fr = 193256442926382920849393404200859041547_u128
-            .try_into()
-            .unwrap();
-        let _p = g * x;
-
-        let x: Fr = 098706349462938454732921167116160610276_u128
-            .try_into()
-            .unwrap();
-        let _p = g * x;
-
-        println!("Projective product took: {:.2?}", now.elapsed());
-        assert!(false);
-        // grumpkin
+        assert!(res.unwrap() == x_num, "Incorrect result");
+        // assert!(false, "\n\nAll good, but this test is disabled for now\n\n");
     }
 }

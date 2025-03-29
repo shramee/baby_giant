@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::ops::{Mul, Range, Rem, Sub};
+use std::ops::{AddAssign, Range};
 
 /// A trait for types that can be used with the baby-step giant-step algorithm
 /// This algorithm solves the discrete logarithm problem: finding x where target = base^x
@@ -13,18 +13,11 @@ pub trait BsgsOps {
     /// The group element type (e.g., points on an elliptic curve)
     type El;
 
-    /// The number of steps to use in the algorithm, affects time-space tradeoff
-    /// Note: u128 provides sufficient range for practical applications
-    const STEPS_COUNT: u128;
-
-    /// Returns the range of steps to iterate through in the giant step phase
-    /// Note: u128 provides sufficient range for practical applications
-    fn steps_range() -> Range<u128>;
+    const STEPS_COUNT: Self::Scalar;
 
     /// Computes and stores all baby steps
     /// Returns a map from group elements to their corresponding scalar values
-    /// Note: u128 provides sufficient range for practical applications
-    fn baby_steps(&self, base: &Self::El) -> HashMap<Self::El, u128>;
+    fn baby_steps(&self, base: &Self::El) -> HashMap<Self::El, Self::Scalar>;
 
     /// Defines the group operation between two elements (addition for elliptic curves)
     fn el_operation(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El;
@@ -33,14 +26,14 @@ pub trait BsgsOps {
     fn giant_step_base(&self, base: &Self::El) -> Self::El;
 
     /// Converts raw baby and giant step values into the final scalar result
-    /// Note: u128 provides sufficient range for practical applications
-    fn process_result(&self, baby: u128, giant: u128) -> Self::Scalar;
+    fn process_result(&self, baby: &Self::Scalar, giant: &Self::Scalar) -> Self::Scalar;
 
     /// The main BSGS algorithm implementation
     /// Solves for x in the equation target = x·base
     fn run(&self, base: Self::El, target: Self::El) -> Option<Self::Scalar>
     where
         Self::El: Eq + Hash,
+        Self::Scalar: Clone + PartialOrd + From<u32> + AddAssign,
     {
         // Precompute all baby steps and store in a hash map for O(1) lookups
         let baby_steps = self.baby_steps(&base);
@@ -52,16 +45,19 @@ pub trait BsgsOps {
         let mut current = target;
 
         // Iterate through all giant steps
-        for giant_step in Self::steps_range() {
+        let mut giant_step: Self::Scalar = 0_u32.into();
+        let scalar_one: Self::Scalar = 1_u32.into();
+        while giant_step < Self::STEPS_COUNT {
             // Check if current element matches any baby step
-            if let Some(&baby_step) = baby_steps.get(&current) {
+            if let Some(baby_step) = baby_steps.get(&current) {
                 // Found a match! Compute the final result
-                return Some(self.process_result(baby_step, giant_step));
+                return Some(self.process_result(baby_step, &giant_step));
             }
 
             // Apply the giant step: current = current + giant_step_base
             // (conceptually: target + j·(-m·base))
             current = self.el_operation(&current, &giant_step_base);
+            giant_step += scalar_one.clone();
         }
 
         // No solution found

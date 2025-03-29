@@ -14,13 +14,16 @@ pub trait BsgsOps {
     type El;
 
     /// The number of steps to use in the algorithm, affects time-space tradeoff
+    /// Note: u128 provides sufficient range for practical applications
     const STEPS_COUNT: u128;
 
     /// Returns the range of steps to iterate through in the giant step phase
+    /// Note: u128 provides sufficient range for practical applications
     fn steps_range() -> Range<u128>;
 
     /// Computes and stores all baby steps
     /// Returns a map from group elements to their corresponding scalar values
+    /// Note: u128 provides sufficient range for practical applications
     fn baby_steps(&self, base: &Self::El) -> HashMap<Self::El, u128>;
 
     /// Defines the group operation between two elements (addition for elliptic curves)
@@ -30,6 +33,7 @@ pub trait BsgsOps {
     fn giant_step_base(&self, base: &Self::El) -> Self::El;
 
     /// Converts raw baby and giant step values into the final scalar result
+    /// Note: u128 provides sufficient range for practical applications
     fn process_result(&self, baby: u128, giant: u128) -> Self::Scalar;
 
     /// The main BSGS algorithm implementation

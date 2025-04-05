@@ -169,6 +169,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ace50bade8e6234aa140d9a2f552bbee1db4d353f69b8217bc503490fc1a9f26"
 
 [[package]]
+name = "babygiant-wasm"
+version = "0.1.0"
+dependencies = [
+ "ark-ff",
+ "ark-grumpkin",
+ "console_error_panic_hook",
+ "core",
+ "wasm-bindgen",
+ "wasm-bindgen-test",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -203,6 +215,7 @@ dependencies = [
 name = "core"
 version = "0.1.0"
 dependencies = [
+ "ark-ff",
  "ark-grumpkin",
 ]
 
@@ -474,15 +487,6 @@ checksum = "29790946404f91d9c5d06f9874efddea1dc06c5efe94541a7d6863108e3a5e4b"
 dependencies = [
  "same-file",
  "winapi-util",
-]
-
-[[package]]
-name = "wasm"
-version = "0.1.0"
-dependencies = [
- "console_error_panic_hook",
- "wasm-bindgen",
- "wasm-bindgen-test",
 ]
 
 [[package]]

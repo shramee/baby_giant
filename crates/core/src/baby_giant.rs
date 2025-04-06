@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::hash::Hash;
 use std::ops::AddAssign;
 
@@ -16,7 +15,11 @@ pub trait BabyGiantOps {
 
     /// Computes and stores all baby steps
     /// Returns a map from group elements to their corresponding scalar values
-    fn baby_steps(&self, base: &Self::El) -> HashMap<Self::El, Self::Scalar>;
+    fn baby_steps(&mut self, base: &Self::El);
+
+    /// Checks if the given element is in the precomputed baby steps
+    /// Returns the corresponding scalar value if found or None
+    fn in_baby_steps(&self, base: &Self::El) -> Option<&Self::Scalar>;
 
     /// Defines the group operation between two elements (addition for elliptic curves)
     fn el_operation(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El;
@@ -29,13 +32,13 @@ pub trait BabyGiantOps {
 
     /// The main BSGS algorithm implementation
     /// Solves for x in the equation target = x·base
-    fn run(&self, base: Self::El, target: Self::El) -> Option<Self::Scalar>
+    fn run(&mut self, base: Self::El, target: Self::El) -> Option<Self::Scalar>
     where
         Self::El: Clone + Eq + Hash,
         Self::Scalar: Clone + PartialOrd + From<u32> + AddAssign,
     {
         // Precompute all baby steps and store in a hash map for O(1) lookups
-        let baby_steps = self.baby_steps(&base);
+        self.baby_steps(&base);
 
         // Compute the giant step base (typically -(m·base))
         let gaint_step_jump = self.gaint_step_jump(&base);
@@ -48,7 +51,7 @@ pub trait BabyGiantOps {
         let steps_count = self.steps_count();
         while giant_step < steps_count {
             // Check if current element matches any baby step
-            if let Some(baby_step) = baby_steps.get(&current) {
+            if let Some(baby_step) = self.in_baby_steps(&current) {
                 // Found a match! Compute the final result
                 return Some(self.process_result(baby_step, &giant_step));
             }

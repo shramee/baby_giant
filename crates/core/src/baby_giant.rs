@@ -19,7 +19,7 @@ pub trait BabyGiantOps {
 
     /// Checks if the given element is in the precomputed baby steps
     /// Returns the corresponding scalar value if found or None
-    fn in_baby_steps(&self, base: &Self::El) -> Option<&Self::Scalar>;
+    fn in_baby_steps(&self, target: &Self::El) -> Option<&Self::Scalar>;
 
     /// Defines the group operation between two elements (addition for elliptic curves)
     fn el_operation(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El;

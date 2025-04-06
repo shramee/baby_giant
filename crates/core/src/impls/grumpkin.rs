@@ -1,6 +1,6 @@
 use ark_ff::BigInt;
 use ark_grumpkin::{Affine, Fq, Fr, G_GENERATOR_X, G_GENERATOR_Y};
-use std::{collections::HashMap, hash::Hash, str::FromStr};
+use std::{collections::HashMap, str::FromStr};
 
 use crate::BabyGiantOps;
 
@@ -9,14 +9,18 @@ pub fn g() -> Affine {
     Affine::new_unchecked(G_GENERATOR_X, G_GENERATOR_Y)
 }
 
-#[derive(Hash, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct GrumpkinBabyGiant {
     steps_count: u64,
+    baby_steps: HashMap<Fq, u64>,
 }
 
 impl GrumpkinBabyGiant {
     pub fn new(steps_count: u64) -> Self {
-        Self { steps_count }
+        Self {
+            steps_count,
+            baby_steps: HashMap::new(),
+        }
     }
 }
 
@@ -29,18 +33,15 @@ impl BabyGiantOps for GrumpkinBabyGiant {
         self.steps_count
     }
 
-    fn baby_steps(&self, base: &Self::El) -> HashMap<Self::El, u64> {
-        let mut baby_steps = HashMap::new();
+    fn baby_steps(&mut self, base: &Self::El) {
         let mut current = *base;
 
         let mut baby_step = 0;
         while baby_step < self.steps_count {
             baby_step += 1;
-            baby_steps.insert(current, baby_step);
+            self.baby_steps.insert(current.x, baby_step);
             current = (current + base).into();
         }
-
-        baby_steps
     }
 
     fn el_operation(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El {
@@ -56,13 +57,16 @@ impl BabyGiantOps for GrumpkinBabyGiant {
         let step_count = self.steps_count;
         giant * step_count + baby
     }
+
+    fn in_baby_steps(&self, target: &Self::El) -> Option<&Self::Scalar> {
+        self.baby_steps.get(&target.x)
+    }
 }
 
 pub fn grumpkin_bsgs(target: Affine, size: u64) -> u64 {
-    let g = Affine::new_unchecked(G_GENERATOR_X, G_GENERATOR_Y);
-    let grumpy_bsgs = GrumpkinBabyGiant::new(size);
+    let mut grumpy_bsgs = GrumpkinBabyGiant::new(size);
 
-    let res = grumpy_bsgs.run(g, target.into());
+    let res = grumpy_bsgs.run(g(), target.into());
 
     match res {
         Some(res) => res,
@@ -87,45 +91,50 @@ pub fn grumpkin_str_to_point(x: &str, y: &str) -> Affine {
 
 #[cfg(test)]
 mod tests {
-    use crate::{impls::grumpkin::GrumpkinBabyGiant, BabyGiantOps};
+    use std::time::Instant;
 
-    // #[test]
-    // fn grumpkin_bsgs_40() {
-    //     let g = Affine::new_unchecked(G_GENERATOR_X, G_GENERATOR_Y);
-    //     let grumpy_bsgs = GrumpkinBabyGiant::new(1_048_576);
+    use ark_grumpkin::Fr;
 
-    //     let x_num = 840368900803_u64;
-    //     let x: Fr = x_num.into();
-    //     let target = (g * x).into();
+    use crate::{
+        impls::grumpkin::{g, GrumpkinBabyGiant},
+        BabyGiantOps,
+    };
 
-    //     let now = Instant::now();
+    #[test]
+    fn grumpkin_bsgs_40() {
+        let mut grumpy_bsgs = GrumpkinBabyGiant::new(1_048_576);
 
-    //     let res = grumpy_bsgs.run(g, target);
+        let x_num = 840368900803_u64;
+        let x: Fr = x_num.into();
+        let target = (g() * x).into();
 
-    //     println!("Result: {:?}", res);
-    //     println!("\n\nGrumpkin BSGS took: {:.2?}", now.elapsed());
+        let now = Instant::now();
 
-    //     assert!(res.unwrap() == x_num, "Incorrect result");
-    // }
+        let res = grumpy_bsgs.run(g(), target);
 
-    // #[test]
-    // fn grumpkin_bsgs_32() {
-    //     let g = Affine::new_unchecked(G_GENERATOR_X, G_GENERATOR_Y);
-    //     let grumpy_bsgs = GrumpkinBabyGiant::new(65536);
+        println!("Result: {:?}", res);
+        println!("\n\nGrumpkin BSGS took: {:.2?}", now.elapsed());
 
-    //     let x_num = 4294967295_u64;
-    //     let x: Fr = x_num.into();
-    //     let target = (g * x).into();
+        assert!(res.unwrap() == x_num, "Incorrect result");
+    }
 
-    //     let now = Instant::now();
+    #[test]
+    fn grumpkin_bsgs_32() {
+        let mut grumpy_bsgs = GrumpkinBabyGiant::new(65536);
 
-    //     let res = grumpy_bsgs.run(g, target);
+        let x_num = 4294967295_u64;
+        let x: Fr = x_num.into();
+        let target = (g() * x).into();
 
-    //     println!("Result: {:?}", res);
-    //     println!("\n\nGrumpkin BSGS took: {:.2?}", now.elapsed());
+        let now = Instant::now();
 
-    //     assert!(res.unwrap() == x_num, "Incorrect result");
-    // }
+        let res = grumpy_bsgs.run(g(), target);
+
+        println!("Result: {:?}", res);
+        println!("\n\nGrumpkin BSGS took: {:.2?}", now.elapsed());
+
+        assert!(res.unwrap() == x_num, "Incorrect result");
+    }
 
     // #[test]
     // pub fn grumpkin_bsgs_str() {
@@ -141,7 +150,7 @@ mod tests {
 
     #[test]
     pub fn grumpkin_baby_steps() {
-        let grumpy_bsgs = GrumpkinBabyGiant::new(32);
+        let mut grumpy_bsgs = GrumpkinBabyGiant::new(32);
 
         let baby_steps = grumpy_bsgs.baby_steps(&super::g());
 

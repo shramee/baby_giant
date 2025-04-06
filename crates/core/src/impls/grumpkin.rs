@@ -4,6 +4,11 @@ use std::{collections::HashMap, hash::Hash, str::FromStr};
 
 use crate::BabyGiantOps;
 
+/// Grumpkin generator point
+pub fn g() -> Affine {
+    Affine::new_unchecked(G_GENERATOR_X, G_GENERATOR_Y)
+}
+
 #[derive(Hash, Clone, PartialEq, Eq)]
 pub struct GrumpkinBabyGiant {
     steps_count: u64,
@@ -53,9 +58,9 @@ impl BabyGiantOps for GrumpkinBabyGiant {
     }
 }
 
-pub fn grumpkin_log_point(target: Affine) -> u64 {
+pub fn grumpkin_bsgs(target: Affine, size: u64) -> u64 {
     let g = Affine::new_unchecked(G_GENERATOR_X, G_GENERATOR_Y);
-    let grumpy_bsgs = GrumpkinBabyGiant::new(65536);
+    let grumpy_bsgs = GrumpkinBabyGiant::new(size);
 
     let res = grumpy_bsgs.run(g, target.into());
 
@@ -65,19 +70,23 @@ pub fn grumpkin_log_point(target: Affine) -> u64 {
     }
 }
 
-pub fn grumpkin_log(x: &str, y: &str) -> u64 {
-    let target = Affine::new_unchecked(
+pub fn grumpkin_bsgs_32(target: Affine) -> u64 {
+    grumpkin_bsgs(target, 65_536)
+}
+
+pub fn grumpkin_bsgs_40(target: Affine) -> u64 {
+    grumpkin_bsgs(target, 1_048_576)
+}
+
+pub fn grumpkin_str_to_point(x: &str, y: &str) -> Affine {
+    Affine::new_unchecked(
         Fq::new(BigInt::from_str(x).unwrap()),
         Fq::new(BigInt::from_str(y).unwrap()),
-    );
-    grumpkin_log_point(target)
+    )
 }
 
 #[cfg(test)]
 mod tests {
-    use ark_grumpkin::{Affine, Fr, G_GENERATOR_X, G_GENERATOR_Y};
-    use std::time::Instant;
-
     use crate::{impls::grumpkin::GrumpkinBabyGiant, BabyGiantOps};
 
     // #[test]
@@ -99,34 +108,43 @@ mod tests {
     //     assert!(res.unwrap() == x_num, "Incorrect result");
     // }
 
+    // #[test]
+    // fn grumpkin_bsgs_32() {
+    //     let g = Affine::new_unchecked(G_GENERATOR_X, G_GENERATOR_Y);
+    //     let grumpy_bsgs = GrumpkinBabyGiant::new(65536);
+
+    //     let x_num = 4294967295_u64;
+    //     let x: Fr = x_num.into();
+    //     let target = (g * x).into();
+
+    //     let now = Instant::now();
+
+    //     let res = grumpy_bsgs.run(g, target);
+
+    //     println!("Result: {:?}", res);
+    //     println!("\n\nGrumpkin BSGS took: {:.2?}", now.elapsed());
+
+    //     assert!(res.unwrap() == x_num, "Incorrect result");
+    // }
+
+    // #[test]
+    // pub fn grumpkin_bsgs_str() {
+    //     let pt_coords = (
+    //         "18404411293574529506939754020345889193409751730106812839425939610401353525304",
+    //         "18142326956230734014841872757503391093517090171806600353970481267506310918723",
+    //     );
+
+    //     let r = super::grumpkin_bsgs_str(pt_coords.0, pt_coords.1);
+
+    //     assert!(r == 35235);
+    // }
+
     #[test]
-    fn grumpkin_bsgs_32() {
-        let g = Affine::new_unchecked(G_GENERATOR_X, G_GENERATOR_Y);
-        let grumpy_bsgs = GrumpkinBabyGiant::new(65536);
+    pub fn grumpkin_baby_steps() {
+        let grumpy_bsgs = GrumpkinBabyGiant::new(32);
 
-        let x_num = 4294967295_u64;
-        let x: Fr = x_num.into();
-        let target = (g * x).into();
+        let baby_steps = grumpy_bsgs.baby_steps(&super::g());
 
-        let now = Instant::now();
-
-        let res = grumpy_bsgs.run(g, target);
-
-        println!("Result: {:?}", res);
-        println!("\n\nGrumpkin BSGS took: {:.2?}", now.elapsed());
-
-        assert!(res.unwrap() == x_num, "Incorrect result");
-    }
-
-    #[test]
-    pub fn grumpkin_bsgs_str() {
-        let pt_coords = (
-            "18404411293574529506939754020345889193409751730106812839425939610401353525304",
-            "18142326956230734014841872757503391093517090171806600353970481267506310918723",
-        );
-
-        let r = super::grumpkin_log(pt_coords.0, pt_coords.1);
-
-        assert!(r == 35235);
+        println!("Baby steps: {:?}", baby_steps);
     }
 }

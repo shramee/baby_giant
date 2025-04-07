@@ -1,6 +1,6 @@
 mod utils;
-use ark_grumpkin::{Affine, Fr};
-use core::{
+use ark_grumpkin::{Affine, Fq, Fr};
+use baby_giant_core::{
     impls::grumpkin::{self, g, GrumpkinBabyGiant},
     BabyGiantOps,
 };
@@ -24,16 +24,21 @@ pub fn greet() {
 }
 
 #[wasm_bindgen]
-pub fn grumpkin_ecmul() {
+pub fn grumpkin_mul() {
     let x: Fr = 4294967295_u64.into();
     let _target = g() * x;
 }
 
 #[wasm_bindgen]
-pub fn baby_steps() -> Vec<u64> {
-    let grumpy_bsgs = GrumpkinBabyGiant::new(65536);
-    let hashmap = grumpy_bsgs.baby_steps(&g());
-    hashmap.into_values().collect()
+pub fn baby_steps() -> Vec<String> {
+    let mut grumpy_bsgs = GrumpkinBabyGiant::new(65536);
+    grumpy_bsgs.baby_steps(&g());
+    grumpy_bsgs
+        .get_baby_steps()
+        .clone()
+        .into_keys()
+        .map(|x| x.to_string())
+        .collect()
 }
 
 #[wasm_bindgen]

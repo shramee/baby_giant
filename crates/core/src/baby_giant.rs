@@ -25,7 +25,7 @@ pub trait BabyGiantOps {
     fn el_operation(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El;
 
     /// Computes the giant step base: typically -(m·base) for a chosen m
-    fn gaint_step_jump(&self, base: &Self::El) -> Self::El;
+    fn giant_step_jump(&self, base: &Self::El) -> Self::El;
 
     /// Converts raw baby and giant step values into the final scalar result
     fn process_result(&self, baby: &Self::Scalar, giant: &Self::Scalar) -> Self::Scalar;
@@ -41,7 +41,7 @@ pub trait BabyGiantOps {
         self.baby_steps(&base);
 
         // Compute the giant step base (typically -(m·base))
-        let gaint_step_jump = self.gaint_step_jump(&base);
+        let giant_step_jump = self.giant_step_jump(&base);
 
         // Start with the target element
         let mut current = target.clone();
@@ -56,7 +56,7 @@ pub trait BabyGiantOps {
                 return Some(self.process_result(baby_step, &giant_step));
             }
             // Apply the giant step, target + giant_step·(-m·base))
-            current = self.el_operation(&current, &gaint_step_jump);
+            current = self.el_operation(&current, &giant_step_jump);
             giant_step += scalar_one.clone();
         }
 

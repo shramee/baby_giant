@@ -51,7 +51,7 @@ impl BabyGiantOps for U128Field {
         (lhs * rhs) % self.modulus
     }
 
-    fn gaint_step_jump(&self, base: &u128) -> u128 {
+    fn giant_step_jump(&self, base: &u128) -> u128 {
         mod_exp(*base, self.modulus - 1 - self.steps_count, self.modulus)
     }
 

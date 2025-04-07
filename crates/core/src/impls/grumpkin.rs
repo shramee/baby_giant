@@ -22,6 +22,9 @@ impl GrumpkinBabyGiant {
             baby_steps: HashMap::new(),
         }
     }
+    pub fn get_baby_steps(&self) -> &HashMap<Fq, u64> {
+        &self.baby_steps
+    }
 }
 
 /// Implementation for u128 modular exponentiation
@@ -48,7 +51,7 @@ impl BabyGiantOps for GrumpkinBabyGiant {
         (*lhs + *rhs).into()
     }
 
-    fn gaint_step_jump(&self, base: &Self::El) -> Self::El {
+    fn giant_step_jump(&self, base: &Self::El) -> Self::El {
         let m: Fr = self.steps_count.into();
         (-(*base * m)).into()
     }

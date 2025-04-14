@@ -1,5 +1,5 @@
 mod utils;
-use ark_grumpkin::{Affine, Fq, Fr};
+use ark_grumpkin::{Affine, Fr};
 use baby_giant_core::{
     impls::grumpkin::{self, g, GrumpkinBabyGiant},
     BabyGiantOps,
